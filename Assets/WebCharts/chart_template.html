@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Progress Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0; /* Light background for the web view */
+            color: #333;
+            overflow: hidden; /* Prevent scrolling inside the webview if content fits */
+        }
+        .chart-container {
+            width: 100%;
+            height: 50vh; /* Half of viewport height */
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        h2 {
+            text-align: center;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h2>Activity Frequency</h2>
+    <div id="activityFrequencyChart" class="chart-container"></div>
+
+    <h2>Time Spent on Activities (Minutes)</h2>
+    <div id="timeSpentChart" class="chart-container"></div>
+
+    <script>
+        // This function will be called from Unity with your data
+        function updateCharts(jsonData) {
+            console.log("Received data from Unity:", jsonData);
+            const data = JSON.parse(jsonData);
+
+            if (!data || !data.allActivityLogs) {
+                console.error("Invalid data structure received.");
+                return;
+            }
+
+            // --- Process data for Activity Frequency ---
+            const activityCounts = {};
+            data.allActivityLogs.forEach(log => {
+                activityCounts[log.activityType] = (activityCounts[log.activityType] || 0) + 1;
+            });
+
+            const activityTypes = Object.keys(activityCounts);
+            const counts = Object.values(activityCounts);
+
+            const freqTrace = {
+                x: activityTypes,
+                y: counts,
+                type: 'bar',
+                marker: {
+                    color: 'rgba(58,200,225,.7)'
+                }
+            };
+
+            const freqLayout = {
+                title: 'Number of Times Each Activity Was Performed',
+                xaxis: { title: 'Activity Type' },
+                yaxis: { title: 'Count' },
+                margin: { t: 40, b: 80, l: 50, r: 20 } // Adjust margins for labels
+            };
+
+            Plotly.newPlot('activityFrequencyChart', [freqTrace], freqLayout, { responsive: true });
+
+            // --- Process data for Time Spent on Activities ---
+            const timeSpent = {};
+            data.allActivityLogs.forEach(log => {
+                timeSpent[log.activityType] = (timeSpent[log.activityType] || 0) + log.durationMinutes;
+            });
+
+            const timeActivityTypes = Object.keys(timeSpent);
+            const durations = Object.values(timeSpent).map(d => d.toFixed(1)); // Format to 1 decimal place
+
+            const timeTrace = {
+                x: timeActivityTypes,
+                y: durations,
+                type: 'bar',
+                marker: {
+                    color: 'rgba(255,165,0,.7)' // Orange color
+                }
+            };
+
+            const timeLayout = {
+                title: 'Total Time Spent per Activity (Minutes)',
+                xaxis: { title: 'Activity Type' },
+                yaxis: { title: 'Total Duration (Minutes)' },
+                margin: { t: 40, b: 80, l: 50, r: 20 }
+            };
+
+            Plotly.newPlot('timeSpentChart', [timeTrace], timeLayout, { responsive: true });
+        }
+
+        // Optional: A small delay to ensure WebView is ready, then call with dummy data for testing
+        // window.onload = function() {
+        //     // Example dummy data for testing the HTML directly in a browser
+        //     const dummyData = {
+        //         "allActivityLogs": [
+        //             {"activityType": "Pomodoro", "timestamp": "...", "durationMinutes": 25, "score": 0, "notes": "..." },
+        //             {"activityType": "Meditation", "timestamp": "...", "durationMinutes": 10, "score": 0, "notes": "..." },
+        //             {"activityType": "MemoryCard", "timestamp": "...", "durationMinutes": 5, "score": 80, "notes": "...", "difficulty": "Easy" },
+        //             {"activityType": "Pomodoro", "timestamp": "...", "durationMinutes": 15, "score": 0, "notes": "..." },
+        //             {"activityType": "Meditation", "timestamp": "...", "durationMinutes": 20, "score": 0, "notes": "..." },
+        //             {"activityType": "Math Game", "timestamp": "...", "durationMinutes": 3, "score": 95, "notes": "...", "difficulty": "Standard" }
+        //         ]
+        //     };
+        //     // updateCharts(JSON.stringify(dummyData));
+        // };
+
+    </script>
+</body>
+</html>

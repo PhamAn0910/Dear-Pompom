@@ -1,0 +1,24 @@
+DEAR POMPOM - HUONG DAN MO PROJECT UNITY
+==========================================
+
+1. Cai Unity Hub: https://unity.com/download
+2. Trong Unity Hub > Installs > Install Editor > tab "Archive" (hoac link duoi),
+   cai DUNG phien ban:  Unity 6000.1.3f1
+   Link: unityhub://6000.1.3f1/f34db9734971
+   (Chi can tick Windows/Mac Build Support cua may minh, khong can Android/iOS.)
+3. Giai nen file zip ra mot thu muc co duong dan NGAN, khong dau tieng Viet,
+   vi du:  C:\Games\DearPompom
+4. Unity Hub > Projects > Add > Add project from disk > chon thu muc vua giai nen.
+5. Mo project. LAN DAU se mat 5-20 phut de Unity import lai asset (thu muc Library).
+   Thanh tien trinh co the dung lau o mot cho -> KHONG tat, cu cho.
+   Neu Unity hoi "upgrade project" -> nghia la sai phien ban, quay lai buoc 2.
+6. Vao Project > Assets/Scenes > mo scene "StartMenu" > bam nut Play.
+
+XUAT RA FILE GAME (de nguoi khac choi khong can Unity):
+   File > Build Profiles > chon Windows (hoac macOS) > Build
+   -> chon thu muc rong -> gui ca thu muc do (nen zip) cho moi nguoi,
+      chay file DearPompom.exe (Windows) hoac .app (Mac).
+
+Neu bi dung khi mo:
+ - Xoa thu muc "Library" va "Temp" trong project roi mo lai.
+ - Kiem tra o dia con trong it nhat ~10 GB.

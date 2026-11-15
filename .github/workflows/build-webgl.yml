@@ -2,7 +2,9 @@ name: Build WebGL and deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # main builds and deploys. v2/** branches build only, to catch compile errors
+    # (there is no Unity Editor on the dev machine) without touching the live site.
+    branches: [main, 'v2/**']
   workflow_dispatch:
 
 permissions:
@@ -11,12 +13,28 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  core-tests:
+    name: Core tests (no Unity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Every asset has a .meta file
+        run: python3 Tools/gen_meta.py --check
+      - name: Unit tests for DearPompom.Core
+        run: dotnet test Tools/CoreTests --nologo
+      - name: Type-check Unity scripts against stubs
+        run: dotnet build Tools/UnityTypecheck --nologo
+
   build:
     name: Build WebGL
+    needs: core-tests
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
@@ -53,12 +71,14 @@ jobs:
           touch build/WebGL/DearPompom/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: build/WebGL/DearPompom
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

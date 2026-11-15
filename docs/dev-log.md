@@ -54,6 +54,16 @@ Mức kiểm chứng dùng trong bảng:
 - Commit `56bc4f66` (`Tools/UnityTypecheck`), `fb6f7686` (workflow, tài liệu).
 - Workflow: thêm job "Core tests (no Unity)" chạy trước; nhánh `v2/**` build nhưng không deploy; chỉ `main` deploy lên Pages.
 
+### Bước 7. Build trên GitHub (nhánh `v2/phase-0-foundation`)
+
+| Lượt | Kết quả | Lỗi | Sửa |
+| --- | --- | --- | --- |
+| 1 | Hỏng sau 22 giây ở "Core tests" | Thiếu file csproj trên GitHub (bug-log C1) | `70239d4c` |
+| 2 | "Core tests" xanh; "Build WebGL" hỏng sau 5 phút | Một lỗi biên dịch duy nhất, `GraphRenderer` gọi `LoadProgress` đã bị xoá (bug-log C2) | commit "Remove stale LoadProgress call" |
+
+Lượt 2 xác nhận: assembly `DearPompom.Core` và assembly test biên dịch được trong Unity; toàn bộ script Unity mới
+chỉ có đúng một lỗi, nằm ở file chưa sửa.
+
 ### Trạng thái cổng Giai đoạn 0 (PRD 9.1)
 
 | Điều kiện qua cổng | Trạng thái |

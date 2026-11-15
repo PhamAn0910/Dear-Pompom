@@ -11,6 +11,8 @@ Ghi mỗi lỗi tìm thấy khi build hoặc khi chơi bản web. Giữ cả l�
 | L2 | 2026-11-15 | Đọc code | Phiên thiền hoàn thành có thể bị ghi thêm một bản "interrupted" | `OnMeditationComplete` không đặt lại `sessionStartTimeUnscaled` | `c831962e` | chưa có (cần chạy trong Unity) |
 | L3 | 2026-11-15 | Đọc code | Nút mute nhà hát tắt luôn tiếng click và nhạc nền | `AudioListener.volume = 0` | `86d2871c` | chưa có |
 | L4 | 2026-11-15 | Đọc scene | Scene StartMenu đặt ngưỡng "nghỉ sau N Pomodoro" là 1, không phải 3 | Giá trị demo còn sót trong Inspector | `c831962e` (ngưỡng giờ nằm trong `BreakAfterPomodorosRule`, mặc định 3) | `BreakAfterPomodoros_FiresOnTheThirdFinishedSession` |
+| C1 | 2026-11-15 | CI lượt 1, job "Core tests" | `MSB1003: Specify a project or solution file` | `.gitignore` chặn `*.csproj` (file Unity tự sinh) nên 3 project trong `Tools/` không được commit | `70239d4c` | Job CI chạy trên checkout sạch |
+| C2 | 2026-11-15 | CI lượt 2, job "Build WebGL" | `GraphRenderer.cs(41,29): error CS1061: 'UserProgressManager' does not contain a definition for 'LoadProgress'` | Xoá hàm public `LoadProgress` khi viết lại `UserProgressManager` mà không tìm nơi gọi ở script ngoài danh sách kiểm tra kiểu | xem dev-log bước 7 | Trước khi xoá hoặc đổi tên thành viên public: `grep -rn "TênHàm" Assets/Scripts` |
 
 ## Mẫu cho lỗi mới
 

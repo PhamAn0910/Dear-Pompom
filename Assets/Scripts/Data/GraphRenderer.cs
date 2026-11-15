@@ -38,7 +38,7 @@ public class GraphRenderer : MonoBehaviour
             return;
         }
 
-        userProgressManager.LoadProgress(); 
+        // No reload from disk here: the manager's in-memory save is always the newest data.
 
         // Choose which graph to draw by uncommenting one:
         // DrawActivityDurationBarChart();

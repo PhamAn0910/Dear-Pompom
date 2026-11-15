@@ -27,3 +27,10 @@
 *.VC.db
 .DS_Store
 ignore.conf
+
+# Plastic SCM local state
+.plastic/
+
+# Local .NET test harness output (Tools/CoreTests)
+/Tools/**/bin/
+/Tools/**/obj/

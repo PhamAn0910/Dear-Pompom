@@ -178,7 +178,9 @@ public class RecommendationSystem : MonoBehaviour
         // Rule 3: If a certain activity hasn't been done in a while, suggest revisiting it 
         // This requires tracking last visit for various activities. You'd need a list of all possible activities.
         // For simplicity, let's check a few key ones.
-        string[] keyActivities = { "Meditation", "VirtualWalk", "JournalEntry", "Orchestra" }; // Adjust as per your game's activities
+        // These must match the activityType strings the game actually logs
+        // (MeditationTimer, SceneVisitLogger, JournalDataManager).
+        string[] keyActivities = { "Meditation", "ForestWalk", "JournalEntry", "TheatreVisit" };
 
         foreach (string activityType in keyActivities)
         {
@@ -190,7 +192,7 @@ public class RecommendationSystem : MonoBehaviour
             if (lastEntryOfType == null)
             {
                 // If never done, suggest it
-                return $"You haven't tried {activityType} yet! It could be a great way to explore.";
+                return $"You haven't tried {GetActivityDisplayName(activityType)} yet! It could be a great way to explore.";
             }
             else
             {
@@ -201,22 +203,21 @@ public class RecommendationSystem : MonoBehaviour
                     {
                         case "Meditation":
                             return $"It's been a while since you mediated. How about a calming meditation session in the Forest?";
-                        case "VirtualWalk":
+                        case "ForestWalk":
                             return $"You haven't gone for a virtual walk recently. The Forest is beautiful today!";
                         case "JournalEntry":
                             return $"It's been a while since you reflected. Your Journal is waiting for new thoughts.";
-                        case "Orchestra":
+                        case "TheatreVisit":
                             return $"It's been a while since you visited the Theatre. Perhaps some music would boost your creativity today?"; // 
                         default:
-                            return $"It's been a while since you last engaged in {activityType}. Perhaps it's time to revisit it?";
+                            return $"It's been a while since you last engaged in {GetActivityDisplayName(activityType)}. Perhaps it's time to revisit it?";
                     }
                 }
             }
         }
 
         // Rule 4: Based on Journal Mood: If mood is low, suggest uplifting activities 
-        // This requires your JournalEntry to capture mood as an int (e.g., 1-5, where 1 is low).
-        // Assuming mood is stored in the 'score' field for JournalEntry, as per paper's suggestion for 'Outcome/Score'.
+        // The journal log carries the picked mood in its 'mood' field (see JournalMood).
         ActivityLogEntry lastJournalEntry = allLogs
             .Where(log => log.activityType == "JournalEntry" || log.activityType == "JournalUpdate")
             .OrderByDescending(log => DateTime.Parse(log.timestamp))
@@ -224,8 +225,8 @@ public class RecommendationSystem : MonoBehaviour
 
         if (lastJournalEntry != null)
         {
-            // Assuming score 0-2 for low mood (adjust based on your mood scale)
-            if ((DateTime.Now - DateTime.Parse(lastJournalEntry.timestamp)).TotalHours < 24 && lastJournalEntry.score <= 2)
+            // Low mood = Tired or Sad
+            if ((DateTime.Now - DateTime.Parse(lastJournalEntry.timestamp)).TotalHours < 24 && JournalMood.IsLow(lastJournalEntry.mood))
             {
                 return "Feeling a bit down? The Theatre's music might lift your spirits!"; // 
             }
@@ -233,6 +234,18 @@ public class RecommendationSystem : MonoBehaviour
 
         // No specific rule-based recommendation found
         return "";
+    }
+
+    private static string GetActivityDisplayName(string activityType)
+    {
+        switch (activityType)
+        {
+            case "Meditation": return "meditating in the Forest";
+            case "ForestWalk": return "a walk in the Forest";
+            case "JournalEntry": return "writing in your Journal";
+            case "TheatreVisit": return "the Theatre";
+            default: return activityType;
+        }
     }
 
     private void DisplayRecommendationUI(string message)

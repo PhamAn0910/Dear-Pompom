@@ -105,6 +105,7 @@ public class JournalDataManager : MonoBehaviour
                 0,                   // score (not applicable)
                 text                 // notes (the actual journal entry text)
             );
+            journalEntryLog.mood = mood; // so recommendations can read the mood
 
             UserProgressManager.Instance.currentUserProgress.AddLog(journalEntryLog);
             UserProgressManager.Instance.SaveProgress(); // Save immediately after an entry is added
@@ -142,6 +143,7 @@ public class JournalDataManager : MonoBehaviour
                     0,                   // score (not applicable)
                     newText              // notes (the updated journal entry text)
                 );
+                journalUpdateLog.mood = newMood; // so recommendations can read the mood
 
                 UserProgressManager.Instance.currentUserProgress.AddLog(journalUpdateLog);
                 UserProgressManager.Instance.SaveProgress();
@@ -194,6 +196,21 @@ public class JournalDataManager : MonoBehaviour
 
     [System.Serializable]
     private class Wrapper { public List<JournalEntry> Entries; }
+}
+
+// Mood values are the index of the mood button in the Home scene
+// (JournalUIManager.moodButtons). They are categories, not a low-to-high scale.
+// Keep this in sync if the buttons are reordered.
+public static class JournalMood
+{
+    public const int None = -1;       // not a journal log, or logged before mood was recorded
+    public const int Productive = 0;
+    public const int Tired = 1;
+    public const int Happy = 2;
+    public const int Sad = 3;
+    public const int Surprised = 4;
+
+    public static bool IsLow(int mood) => mood == Tired || mood == Sad;
 }
 
 [System.Serializable]

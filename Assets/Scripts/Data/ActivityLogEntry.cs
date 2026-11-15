@@ -10,6 +10,7 @@ public class ActivityLogEntry
     public int score;             // Score for games, 0 if not applicable 
     public string notes;           // For journal entries, or other context 
     public string difficulty;      // For games, e.g., "Easy", "Medium" 
+    public int mood = JournalMood.None; // Journal logs only: index of the mood button picked (see JournalMood)
 
     // Constructor for easily creating new activity log entries 
     public ActivityLogEntry(string type, float duration, int score = 0, string notes = "", string difficulty = "")

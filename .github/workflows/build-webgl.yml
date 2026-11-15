@@ -5,6 +5,8 @@ on:
     # main builds and deploys. v2/** branches build only, to catch compile errors
     # (there is no Unity Editor on the dev machine) without touching the live site.
     branches: [main, 'v2/**']
+    # A docs-only change does not need a 20-minute Unity build.
+    paths-ignore: ['docs/**', '**.md']
   workflow_dispatch:
 
 permissions:

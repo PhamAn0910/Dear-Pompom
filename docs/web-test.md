@@ -1,6 +1,6 @@
 # Test bản web
 
-Code Giai đoạn 0 **chưa từng chạy trong Unity**. Trang này liệt kê cần kiểm gì và lỗi nào dễ xảy ra nhất.
+Code Giai đoạn 0 đã được Unity biên dịch và build WebGL thành công trên CI (2026-11-15), nhưng **chưa ai chơi thử**. Trang này liệt kê cần kiểm gì và lỗi nào dễ xảy ra nhất.
 
 ## Đọc log ở đâu
 
@@ -34,8 +34,6 @@ Số của `type`: 1 Pomodoro, 2 Meditation, 3 ForestWalk, 4 Journal, 5 MemoryCa
 
 | Rủi ro | Vì sao ngờ | Dấu hiệu |
 | --- | --- | --- |
-| Lỗi biên dịch ở script Unity | Chỉ kiểm bằng stub tự viết | Job "Build WebGL" đỏ, có `error CS` |
 | `FS.syncfs` trong jslib trên Unity 6 | Tên `FS` có thể không lộ ra cho jslib ở bản Emscripten mới | Console: `file sync is unavailable`; mất dữ liệu ở bước 14 |
 | Save 1.0 trên web không được nhận | Không chắc `persistentDataPath` trên WebGL có đổi khi đổi tên sản phẩm | Console: `no save found, started a new one` dù trước đó đã chơi bản 1.0 trên cùng trình duyệt |
 | Bản sao dịch vụ trong StartMenu | `_Managers` trong scene tự gỡ component; nếu có script khác trông vào nó thì hỏng | `MissingReferenceException` nhắc `UserProgressManager` |
-| Test assembly làm hỏng build | `Assets/Tests/EditMode` biên dịch trong editor khi build | `error CS` trong file `*Tests.cs` |

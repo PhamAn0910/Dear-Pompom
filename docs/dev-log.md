@@ -59,7 +59,8 @@ Mức kiểm chứng dùng trong bảng:
 | Lượt | Kết quả | Lỗi | Sửa |
 | --- | --- | --- | --- |
 | 1 | Hỏng sau 22 giây ở "Core tests" | Thiếu file csproj trên GitHub (bug-log C1) | `70239d4c` |
-| 2 | "Core tests" xanh; "Build WebGL" hỏng sau 5 phút | Một lỗi biên dịch duy nhất, `GraphRenderer` gọi `LoadProgress` đã bị xoá (bug-log C2) | commit "Remove stale LoadProgress call" |
+| 2 | "Core tests" xanh; "Build WebGL" hỏng sau 5 phút | Một lỗi biên dịch duy nhất, `GraphRenderer` gọi `LoadProgress` đã bị xoá (bug-log C2) | `ed9d64bc` |
+| 3 | Xanh cả hai job, build WebGL mất 16 phút | Không có `error CS` hay `warning CS` trong log | |
 
 Lượt 2 xác nhận: assembly `DearPompom.Core` và assembly test biên dịch được trong Unity; toàn bộ script Unity mới
 chỉ có đúng một lỗi, nằm ở file chưa sửa.
@@ -71,7 +72,8 @@ chỉ có đúng một lỗi, nằm ở file chưa sửa.
 | Test bộ gợi ý xanh | Đạt (dotnet) |
 | Test migrate save xanh | Đạt (dotnet) |
 | Save 1.0 mở được | Đạt ở mức logic (file thật migrate được). Đường đọc file trong Unity: **Chưa** |
-| Unity biên dịch được | **Chưa**, chờ build trên GitHub |
+| Unity biên dịch và build WebGL được | Đạt (lượt 3, run 43685572481) |
+| Chạy đúng khi chơi | **Chưa**: nhánh `v2/**` không deploy. Cần gộp vào `main` rồi đi hết [web-test.md](web-test.md) |
 
 ### Còn lại của Giai đoạn 0
 

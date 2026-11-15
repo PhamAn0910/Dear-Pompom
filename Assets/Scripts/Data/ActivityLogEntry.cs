@@ -1,22 +1,25 @@
-// ActivityLogEntry.cs
-using System; // Required for DateTime
+using System;
 
-[System.Serializable] // This makes the class savable by Unity's JSON utility
+/// <summary>
+/// 1.0 log shape. Kept ONLY as a read-only view for the 1.0 chart scripts; see
+/// UserProgressManager.currentUserProgress. New code uses DearPompom.Core.ActivityRecord.
+/// </summary>
+[Serializable]
 public class ActivityLogEntry
 {
-    public string activityType;    // e.g., "Pomodoro", "Meditation", "MemoryCard" 
-    public string timestamp;       // When the activity occurred (e.g., DateTime.Now.ToString("o") for ISO 8601) 
-    public float durationMinutes;  // Duration of the activity in minutes 
-    public int score;             // Score for games, 0 if not applicable 
-    public string notes;           // For journal entries, or other context 
-    public string difficulty;      // For games, e.g., "Easy", "Medium" 
-    public int mood = JournalMood.None; // Journal logs only: index of the mood button picked (see JournalMood)
+    public string activityType;
+    public string timestamp;
+    public float durationMinutes;
+    public int score;
+    public string notes;
+    public string difficulty;
+    /// <summary>(int)DearPompom.Core.Mood; -1 when not a journal record.</summary>
+    public int mood = -1;
 
-    // Constructor for easily creating new activity log entries 
     public ActivityLogEntry(string type, float duration, int score = 0, string notes = "", string difficulty = "")
     {
         this.activityType = type;
-        this.timestamp = DateTime.Now.ToString("o"); // Saves the exact date and time in a standard format
+        this.timestamp = DateTime.Now.ToString("o");
         this.durationMinutes = duration;
         this.score = score;
         this.notes = notes;

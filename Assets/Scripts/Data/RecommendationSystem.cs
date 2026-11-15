@@ -1,275 +1,127 @@
-// RecommendationSystem.cs
+using DearPompom;
+using DearPompom.Core;
+using TMPro;
 using UnityEngine;
-using System.Collections.Generic;
-using System.Linq; // Required for LINQ queries like .LastOrDefault()
-using TMPro; // Required for TextMeshProUGUI (if you're using TMPro for UI)
-using System; // Required for DateTime
+using UnityEngine.SceneManagement;
 
+/// <summary>
+/// Shows Pompom's letters in the 1.0 popup panel. This class only PRESENTS: which letter to
+/// send is decided by the core RecommendationEngine (via Services.Recommendations).
+///
+/// Flow: an activity is recorded -> RecommendationReady arrives -> the letter waits ->
+/// one second after the next scene loads it is shown and marked as shown.
+/// Phase 2 replaces this popup with the mailbox (PRD C1, R3); the service stays the same.
+/// </summary>
 public class RecommendationSystem : MonoBehaviour
 {
-    // Assign these in the Inspector
-    public GameObject recommendationUIPanel; // The UI panel that will show the recommendation
-    public TextMeshProUGUI recommendationText; // The TextMeshProUGUI component to display the message
+    // Assigned in the StartMenu scene (objects on the persistent UI canvas).
+    public GameObject recommendationUIPanel;
+    public TextMeshProUGUI recommendationText;
 
-    [Header("Recommendation Rules Settings")]
-    public int pomodoroSessionsForRelaxation = 3; // After this many Pomodoro sessions, suggest relaxation
-    public float activityInactivityThresholdDays = 2; // Days after which an activity is considered "not done in a while"
+    private const float ShowDelaySeconds = 1f;
+    private const string WelcomeText = "Welcome to the village of Pompom!";
 
-    // Reference to the UserProgressManager (Singleton)
-    private UserProgressManager userProgressManager;
-    
-    // Store pending recommendation to show after scene change
-    private string pendingRecommendation = "";
-    private bool shouldShowRecommendationOnSceneLoad = false;
-    
-    // Track previous scene for welcome messages
-    private string previousSceneName = "";
+    private static RecommendationSystem _instance;
+
+    private Recommendation _pending;   // decided, waiting for the next scene
+    private Recommendation _showing;   // on screen right now
+    private string _previousSceneName = "";
+    private bool _subscribed;
+
+    void Awake()
+    {
+        if (_instance != null && _instance != this)
+        {
+            // StartMenu was loaded again; the first copy is still alive.
+            Destroy(gameObject);
+            return;
+        }
+        _instance = this;
+    }
 
     void Start()
     {
-        // Make this GameObject persist across scenes
+        if (_instance != this) return;
+
         DontDestroyOnLoad(gameObject);
-        
-        // Subscribe to scene change events
-        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
-        
-        // Ensure the UI panel is initially hidden
-        if (recommendationUIPanel != null)
-        {
-            recommendationUIPanel.SetActive(false);
-        }
+        if (recommendationUIPanel != null) recommendationUIPanel.SetActive(false);
 
-        // Get the singleton instance of UserProgressManager
-        userProgressManager = UserProgressManager.Instance;
-        if (userProgressManager == null)
-        {
-            Debug.LogError("UserProgressManager.Instance not found! Make sure it's initialized in the scene.");
-        }
-
-        // Initialize previous scene name
-        previousSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-
-        // You might want to trigger a recommendation check at specific times,
-        // e.g., after an activity completes, or when the user enters the main hub.
-        // For demonstration, we'll call it after a short delay or based on a game event.
-        // For now, let's call it after a delay to simulate game startup check.
-        // Invoke("CheckAndDisplayRecommendation", 2f); // Call after 2 seconds - COMMENTED OUT
+        _previousSceneName = SceneManager.GetActiveScene().name;
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        Services.EnsureBooted();
+        Services.Events.Subscribe<RecommendationReady>(OnRecommendationReady);
+        _subscribed = true;
     }
 
     void OnDestroy()
     {
-        // Unsubscribe from scene events to prevent memory leaks
-        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (_instance == this) _instance = null;
+        if (!_subscribed) return;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (Services.Events != null) Services.Events.Unsubscribe<RecommendationReady>(OnRecommendationReady);
     }
 
-    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    private void OnRecommendationReady(RecommendationReady message)
     {
-        // Check for specific scene transitions for welcome messages
-        if (previousSceneName == "StartMenu" && scene.name == "World")
-        {
-            // Show welcome message when entering World from StartMenu
-            Invoke("ShowWelcomeMessage", 1f);
-        }
-        else if (shouldShowRecommendationOnSceneLoad && !string.IsNullOrEmpty(pendingRecommendation))
-        {
-            // Show pending recommendation after scene loads (with a small delay to ensure UI is ready)
-            Invoke("ShowPendingRecommendation", 1f); // Small delay to ensure scene UI is ready
-        }
-        
-        // Update previous scene name for next transition
-        previousSceneName = scene.name;
+        // A newer suggestion replaces one that was never shown.
+        _pending = message.Recommendation;
     }
 
-    private void ShowPendingRecommendation()
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (!string.IsNullOrEmpty(pendingRecommendation))
-        {
-            Debug.Log($"Showing delayed recommendation: {pendingRecommendation}");
-            DisplayRecommendationUI(pendingRecommendation);
-            
-            // Clear the pending recommendation
-            pendingRecommendation = "";
-            shouldShowRecommendationOnSceneLoad = false;
-        }
+        CancelInvoke();
+        if (_previousSceneName == "StartMenu" && scene.name == "World")
+            Invoke(nameof(ShowWelcomeMessage), ShowDelaySeconds);
+        else if (_pending != null)
+            Invoke(nameof(ShowPendingRecommendation), ShowDelaySeconds);
+
+        _previousSceneName = scene.name;
     }
 
     private void ShowWelcomeMessage()
     {
-        Debug.Log("Showing welcome message for entering World scene");
-        DisplayRecommendationUI("Welcome to the village of Pompom!");
+        _showing = null;
+        Display(WelcomeText);
     }
 
-    /// <summary>
-    /// This method can be called whenever you want to check for and display a new recommendation.
-    /// E.g., at scene load, after an activity is completed, etc.
-    /// </summary>
-    public void CheckAndDisplayRecommendation()
+    private void ShowPendingRecommendation()
     {
-        CheckAndDisplayRecommendation(false); // Default to immediate display
+        if (_pending == null) return;
+        _showing = _pending;
+        _pending = null;
+        if (Display(_showing.Text)) Services.Recommendations.MarkShown(_showing);
+        else _showing = null;
     }
 
-    /// <summary>
-    /// Check for recommendations with option to delay display until scene change
-    /// </summary>
-    /// <param name="delayUntilSceneChange">If true, recommendation will be shown after next scene load</param>
-    public void CheckAndDisplayRecommendation(bool delayUntilSceneChange = false)
+    private bool Display(string message)
     {
-        if (userProgressManager == null)
-        {
-            Debug.LogError("RecommendationSystem: UserProgressManager is not available.");
-            return;
-        }
-
-        string recommendation = GetRecommendation();
-
-        if (!string.IsNullOrEmpty(recommendation))
-        {
-            Debug.Log($"Recommendation: {recommendation}");
-            
-            if (delayUntilSceneChange)
-            {
-                // Store recommendation to show after scene change
-                pendingRecommendation = recommendation;
-                shouldShowRecommendationOnSceneLoad = true;
-                Debug.Log("Recommendation will be shown after next scene load.");
-            }
-            else
-            {
-                // Show immediately
-                DisplayRecommendationUI(recommendation);
-            }
-        }
-        else
-        {
-            Debug.Log("No specific recommendation at this time.");
-            HideRecommendationUI();
-        }
-    }
-
-    private string GetRecommendation()
-    {
-        // Get all user logs
-        List<ActivityLogEntry> allLogs = userProgressManager.currentUserProgress.allActivityLogs;
-
-        // Rule 2: After a Brain Game (Memory/Math), suggest physical activity or reflection - CHECK THIS FIRST!
-        ActivityLogEntry lastActivity = allLogs.LastOrDefault();
-        if (lastActivity != null)
-        {
-            if (lastActivity.activityType == "MemoryCard" || lastActivity.activityType == "Math Game")
-            {
-                // Check if it was done recently (e.g., within the last hour)
-                if ((DateTime.Now - DateTime.Parse(lastActivity.timestamp)).TotalHours < 1)
-                {
-                    return "Great brain workout! A virtual walk in the Forest might clear your mind, or perhaps your Journal is waiting for reflection."; // 
-                }
-            }
-        }
-
-        // Rule 1: After X Pomodoro sessions, suggest relaxation - CHECK THIS SECOND
-        int pomodoroCountToday = allLogs.Count(log =>
-            log.activityType == "Pomodoro" &&
-            DateTime.Parse(log.timestamp).Date == DateTime.Now.Date);
-
-        if (pomodoroCountToday >= pomodoroSessionsForRelaxation)
-        {
-            return $"What a productive day! You've finished {pomodoroCountToday} Pomodoro sessions. This is the time to relax with music in the Theatre or a calming meditation session in the Forest!"; // 
-        }
-
-        // Rule 3: If a certain activity hasn't been done in a while, suggest revisiting it 
-        // This requires tracking last visit for various activities. You'd need a list of all possible activities.
-        // For simplicity, let's check a few key ones.
-        // These must match the activityType strings the game actually logs
-        // (MeditationTimer, SceneVisitLogger, JournalDataManager).
-        string[] keyActivities = { "Meditation", "ForestWalk", "JournalEntry", "TheatreVisit" };
-
-        foreach (string activityType in keyActivities)
-        {
-            ActivityLogEntry lastEntryOfType = allLogs
-                .Where(log => log.activityType == activityType)
-                .OrderByDescending(log => DateTime.Parse(log.timestamp))
-                .FirstOrDefault();
-
-            if (lastEntryOfType == null)
-            {
-                // If never done, suggest it
-                return $"You haven't tried {GetActivityDisplayName(activityType)} yet! It could be a great way to explore.";
-            }
-            else
-            {
-                TimeSpan timeSinceLast = DateTime.Now - DateTime.Parse(lastEntryOfType.timestamp);
-                if (timeSinceLast.TotalDays > activityInactivityThresholdDays)
-                {
-                    switch (activityType)
-                    {
-                        case "Meditation":
-                            return $"It's been a while since you mediated. How about a calming meditation session in the Forest?";
-                        case "ForestWalk":
-                            return $"You haven't gone for a virtual walk recently. The Forest is beautiful today!";
-                        case "JournalEntry":
-                            return $"It's been a while since you reflected. Your Journal is waiting for new thoughts.";
-                        case "TheatreVisit":
-                            return $"It's been a while since you visited the Theatre. Perhaps some music would boost your creativity today?"; // 
-                        default:
-                            return $"It's been a while since you last engaged in {GetActivityDisplayName(activityType)}. Perhaps it's time to revisit it?";
-                    }
-                }
-            }
-        }
-
-        // Rule 4: Based on Journal Mood: If mood is low, suggest uplifting activities 
-        // The journal log carries the picked mood in its 'mood' field (see JournalMood).
-        ActivityLogEntry lastJournalEntry = allLogs
-            .Where(log => log.activityType == "JournalEntry" || log.activityType == "JournalUpdate")
-            .OrderByDescending(log => DateTime.Parse(log.timestamp))
-            .FirstOrDefault();
-
-        if (lastJournalEntry != null)
-        {
-            // Low mood = Tired or Sad
-            if ((DateTime.Now - DateTime.Parse(lastJournalEntry.timestamp)).TotalHours < 24 && JournalMood.IsLow(lastJournalEntry.mood))
-            {
-                return "Feeling a bit down? The Theatre's music might lift your spirits!"; // 
-            }
-        }
-
-        // No specific rule-based recommendation found
-        return "";
-    }
-
-    private static string GetActivityDisplayName(string activityType)
-    {
-        switch (activityType)
-        {
-            case "Meditation": return "meditating in the Forest";
-            case "ForestWalk": return "a walk in the Forest";
-            case "JournalEntry": return "writing in your Journal";
-            case "TheatreVisit": return "the Theatre";
-            default: return activityType;
-        }
-    }
-
-    private void DisplayRecommendationUI(string message)
-    {
-        if (recommendationUIPanel != null && recommendationText != null)
-        {
-            recommendationText.text = message;
-            recommendationUIPanel.SetActive(true);
-            // You might want to add animation or a sound effect here.
-            // Also, consider adding a button to close the panel after user reads it.
-        }
+        if (recommendationUIPanel == null || recommendationText == null) return false;
+        recommendationText.text = message;
+        recommendationUIPanel.SetActive(true);
+        return true;
     }
 
     public void HideRecommendationUI()
     {
-        if (recommendationUIPanel != null)
-        {
-            recommendationUIPanel.SetActive(false);
-        }
+        if (recommendationUIPanel != null) recommendationUIPanel.SetActive(false);
     }
 
-    // Optional: Add a public method to hide the UI via a UI button
+    /// <summary>Wired to the panel's close button in the StartMenu scene.</summary>
     public void OnCloseRecommendationClicked()
     {
+        if (_showing != null) Services.Recommendations.MarkDismissed(_showing);
+        _showing = null;
         HideRecommendationUI();
+    }
+
+    /// <summary>For a future "Go now" button: follows the letter to its activity's scene.</summary>
+    public void OnGoNowClicked()
+    {
+        Recommendation followed = _showing;
+        _showing = null;
+        HideRecommendationUI();
+        if (followed == null) return;
+        Services.Recommendations.MarkAccepted(followed);
+        if (followed.Target != ActivityType.Unknown) SceneManager.LoadScene(ActivityTypes.SceneName(followed.Target));
     }
 }

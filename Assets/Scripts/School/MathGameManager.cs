@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using System;
+using DearPompom.Core;
 
 public class MathGameManager : MonoBehaviour
 {
@@ -197,11 +198,10 @@ public class MathGameManager : MonoBehaviour
             
             // Use RecordActivity instead of manually adding logs
             UserProgressManager.Instance.RecordActivity(
-                "Math Game",
-                duration / 60, // Convert duration from seconds to minutes
-                score,
-                "", // No notes for this game type
-                difficulty
+                ActivityType.MathGame,
+                duration / 60, // seconds to minutes
+                score: score,
+                difficulty: difficulty
             );
         }
 

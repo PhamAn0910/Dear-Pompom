@@ -1,8 +1,16 @@
-// UserProgressManager.cs
+using System.Collections.Generic;
+using DearPompom;
+using DearPompom.Core;
 using UnityEngine;
-using System.IO; // Required for File operations (File.Exists, File.ReadAllText, File.WriteAllText)
-using UnityEngine.SceneManagement;
 
+/// <summary>
+/// Owns the player's save while the game runs. The ONLY way to log an activity is
+/// <see cref="RecordActivity"/> (PRD D4); it appends through the core ActivityLog, publishes
+/// <see cref="ActivityRecorded"/> on Services.Events and writes the save.
+///
+/// Created by <see cref="Services"/> before the first scene. The copy that still sits in the
+/// StartMenu scene from 1.0 removes itself in Awake.
+/// </summary>
 public class UserProgressManager : MonoBehaviour
 {
     private static UserProgressManager _instance;
@@ -11,145 +19,125 @@ public class UserProgressManager : MonoBehaviour
     {
         get
         {
-            if (_instance == null)
-            {
-                _instance = FindFirstObjectByType<UserProgressManager>();
-            }
-
-            if (_instance == null)
-            {
-                GameObject managerObject = new GameObject("UserProgressManager");
-                _instance = managerObject.AddComponent<UserProgressManager>();
-                Debug.Log("UserProgressManager instance was not found in the scene. A new one was created.");
-            }
-
+            if (_instance == null) Services.EnsureBooted();
             return _instance;
         }
     }
 
-    // This is the actual data container that holds all our logs
-    public UserProgressData currentUserProgress;
+    public SaveData Save { get; private set; }
+    public ActivityLog Log { get; private set; }
 
-    // The name of the file where data will be saved
-    [SerializeField] // Allows this private field to be set in the Unity Inspector
-    private string dataFileName = "userProgress.json"; // Default file name
+    /// <summary>Fresh query object over the current log. Cheap to create; do not cache across frames.</summary>
+    public ProgressStats Stats { get { return new ProgressStats(Save.records, Services.Clock); } }
 
-    private string saveFilePath; // Full path to the save file
-    private string _savePath; // Full path to the save file (used in Awake)
-
-    private RecommendationSystem _recommendationSystem;
+    private UserProgressData _legacyView;
 
     void Awake()
     {
-        if (_instance == null)
+        if (_instance != null && _instance != this)
         {
-            _instance = this;
-            DontDestroyOnLoad(gameObject); // Persist across scenes
-            _savePath = Path.Combine(Application.persistentDataPath, "userProgress.json");
-            LoadProgress();
+            // Scene copy from 1.0. Remove only this component: its GameObject may host other scripts.
+            Destroy(this);
+            return;
         }
-        else
-        {
-            Destroy(gameObject); // Destroy duplicate instances
-        }
+
+        _instance = this;
+        Services.EnsureBooted();
+
+        string description;
+        Save = Services.Store.LoadProgress(Services.Clock, out description);
+        Log = new ActivityLog(Save, Services.Clock);
+        Debug.Log("[DearPompom] save: " + description);
+
+        // Write straight away so a migrated or brand-new save exists on disk in the 2.0 format.
+        SaveProgress();
     }
 
-    void Start()
+    void OnDestroy()
     {
-        Debug.Log("UserProgressManager Start() called"); // NEW DEBUG LINE
-        
-        // Find the RecommendationSystem in the scene.
-        // Ensure the RecommendationSystemController GameObject is active in the scene.
-        _recommendationSystem = FindFirstObjectByType<RecommendationSystem>();
-        if (_recommendationSystem == null)
-        {
-            Debug.LogWarning("RecommendationSystem not found in scene. Recommendations will not be displayed.");
-        }
-        else
-        {
-            Debug.Log("RecommendationSystem found successfully!"); // NEW DEBUG LINE
-        }
+        if (_instance == this) _instance = null;
     }
 
-    public void RecordActivity(string activityType, float duration, int score = 0, string notes = "", string difficulty = "")
+    /// <summary>Logs one finished (or interrupted) activity and saves.</summary>
+    /// <param name="durationMinutes">Real minutes spent.</param>
+    /// <param name="completed">False when a timer was stopped early.</param>
+    /// <param name="targetMinutes">Minutes the player planned, for timers.</param>
+    public ActivityRecord RecordActivity(
+        ActivityType type,
+        float durationMinutes,
+        bool completed = true,
+        float targetMinutes = 0f,
+        int score = 0,
+        string difficulty = "",
+        Mood mood = Mood.None,
+        ActivityKind kind = ActivityKind.None,
+        string notes = "")
     {
-        Debug.Log($"RecordActivity called with: {activityType}"); // NEW DEBUG LINE
-        
-        ActivityLogEntry newLog = new ActivityLogEntry(activityType, duration, score, notes, difficulty);
-        currentUserProgress.AddLog(newLog);
-        Debug.Log($"Recorded activity: {activityType}, Duration: {duration}, Score: {score}, Notes: '{notes}'");
-
-        SaveProgress(); // Save after every record for robustness
-
-        // *** IMPORTANT: Trigger recommendation check after recording activity ***
-        if (_recommendationSystem != null)
+        if (Log == null)
         {
-            _recommendationSystem.CheckAndDisplayRecommendation(true); // TRUE = delay until scene change
-            Debug.Log("Recommendation check triggered after recording activity (will show on next scene load).");
+            Debug.LogError("[DearPompom] RecordActivity called before the save was loaded.");
+            return null;
         }
-        else
-        {
-            Debug.LogError("_recommendationSystem is NULL! Cannot trigger recommendation check."); // NEW DEBUG LINE
-        }
+
+        ActivityRecord record = Log.Add(type, durationMinutes, completed, targetMinutes, score, difficulty, mood, kind, notes);
+        _legacyView = null;
+        SaveProgress();
+        Services.Events.Publish(new ActivityRecorded(record));
+        return record;
     }
 
-    private void InitializeProgress()
-    {
-        // Combine the persistent data path with the file name
-        saveFilePath = Path.Combine(Application.persistentDataPath, dataFileName);
-        Debug.Log("Save file path: " + saveFilePath);
-
-        LoadProgress(); // Try to load existing progress when the game starts
-    }
-
-    // Call this method whenever you want to save the current progress
     public void SaveProgress()
     {
-        // Ensure saveFilePath is set
-        if (string.IsNullOrEmpty(saveFilePath))
-        {
-            saveFilePath = Path.Combine(Application.persistentDataPath, dataFileName);
-        }
-        
-        // Convert the currentUserProgress object into a JSON string
-        string json = JsonUtility.ToJson(currentUserProgress, true); // 'true' for pretty printing (readable format)
-
-        // Write the JSON string to the file
-        File.WriteAllText(saveFilePath, json);
-        Debug.Log("Progress saved to: " + saveFilePath);
+        if (Save != null) Services.Store.SaveProgress(Save);
     }
 
-    // Call this method to load existing progress from the file
-    public void LoadProgress()
+    /// <summary>Wipes the log and settings and starts over (PRD D7). The caller confirms with the player first.</summary>
+    public void ResetAllData()
     {
-        // Ensure saveFilePath is set
-        if (string.IsNullOrEmpty(saveFilePath))
-        {
-            saveFilePath = Path.Combine(Application.persistentDataPath, dataFileName);
-        }
-        
-        // Check if the save file exists
-        if (File.Exists(saveFilePath))
-        {
-            // Read all text from the file
-            string json = File.ReadAllText(saveFilePath);
+        Services.Store.DeleteAll();
+        Save = new SaveData { createdAt = Timestamp.Format(Services.Clock.Now) };
+        Save.EnsureValid();
+        Log = new ActivityLog(Save, Services.Clock);
+        _legacyView = null;
+        SaveProgress();
+    }
 
-            // Convert the JSON string back into a UserProgressData object
-            currentUserProgress = JsonUtility.FromJson<UserProgressData>(json);
-            Debug.Log("Progress loaded from: " + saveFilePath);
-        }
-        else
+    // Saving on quit is not reliable in a browser tab, so every change already saves immediately.
+    // These are a last safety net for desktop builds.
+    private void OnApplicationQuit() { if (_instance == this) SaveProgress(); }
+
+    private void OnApplicationPause(bool paused) { if (paused && _instance == this) SaveProgress(); }
+
+    // ------------------------------------------------------------------ 1.0 compatibility
+
+    /// <summary>
+    /// Read-only view of the log in the 1.0 shape, for the 1.0 chart scripts (GraphRenderer,
+    /// DataGrapher) until the Progress screen is rebuilt on ProgressStats. Changes to this
+    /// object are NOT saved. New code must use <see cref="Stats"/> or <see cref="Save"/>.
+    /// </summary>
+    public UserProgressData currentUserProgress
+    {
+        get
         {
-            // If the file doesn't exist, create a new UserProgressData object
-            currentUserProgress = new UserProgressData();
-            Debug.Log("No save file found. Creating new progress data.");
-            SaveProgress(); // Save the new empty data immediately
+            if (_legacyView == null) _legacyView = BuildLegacyView();
+            return _legacyView;
         }
     }
 
-    // This method is called when the application is quitting
-    private void OnApplicationQuit()
+    private UserProgressData BuildLegacyView()
     {
-        SaveProgress(); // Ensure data is saved when the user closes the game
+        var view = new UserProgressData();
+        if (Save == null) return view;
+        List<ActivityRecord> records = Save.records;
+        for (int i = 0; i < records.Count; i++)
+        {
+            ActivityRecord r = records[i];
+            if (r == null || !r.HasValidTime) continue;
+            var entry = new ActivityLogEntry(LegacyActivityNames.For(r), r.durationMinutes, r.score, r.notes, r.difficulty);
+            entry.timestamp = r.timestamp;
+            entry.mood = (int)r.mood;
+            view.allActivityLogs.Add(entry);
+        }
+        return view;
     }
 }

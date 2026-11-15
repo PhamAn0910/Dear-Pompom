@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using System.Linq;
+using DearPompom.Core;
 
 public class GameSceneController2 : MonoBehaviour
 {
@@ -296,11 +297,10 @@ public class GameSceneController2 : MonoBehaviour
 
             // Use RecordActivity instead of manually adding logs
             UserProgressManager.Instance.RecordActivity(
-                "MemoryCard",        // activityType
-                gameDurationMinutes, // durationMinutes
-                _score,              // score
-                "Game completed successfully", // notes
-                difficultyName       // difficulty
+                ActivityType.MemoryCard,
+                gameDurationMinutes,
+                score: _score,
+                difficulty: difficultyName
             );
 
             Debug.Log($"Logged Memory Card Game: Difficulty {difficultyName}, Score {_score}, Duration {gameDurationMinutes:F1} mins.");

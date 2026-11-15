@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using System;
 using System.Collections;
 using TMPro;
+using DearPompom.Core;
 
 public class PomodoroDayNight : MonoBehaviour
 {
@@ -173,54 +174,27 @@ public class PomodoroDayNight : MonoBehaviour
     {
         SwitchToState(2); // Start Resting
         restingTransitionCoroutine = StartCoroutine(TransitionToResting());
-
-        // --- NEW LOGGING CODE ---
-        if (UserProgressManager.Instance != null)
-        {
-            float actualDurationMinutes = (Time.unscaledTime - sessionStartTimeUnscaled) / 60f; // Use unscaled time
-            if (actualDurationMinutes < 0) actualDurationMinutes = 0; // Just in case, no negative duration
-
-            ActivityLogEntry pomodoroLog = new ActivityLogEntry(
-                "Pomodoro",          // activityType
-                actualDurationMinutes, // durationMinutes (actual time spent)
-                0,                   // score (not applicable)
-                $"Pomodoro session of {initialPomodoroMinutes} minutes completed." // notes
-            );
-
-            UserProgressManager.Instance.currentUserProgress.AddLog(pomodoroLog);
-            UserProgressManager.Instance.SaveProgress();
-
-            Debug.Log($"Logged Pomodoro COMPLETED: {actualDurationMinutes:F1} minutes (Target: {initialPomodoroMinutes}).");
-        }
-        else
-        {
-            Debug.LogError("UserProgressManager.Instance is null. Cannot log Pomodoro activity.");
-        }
-        // --- END NEW LOGGING CODE ---
+        LogSession(true);
     }
 
-    // --- NEW METHOD: To log interrupted Pomodoro sessions ---
+    // Called when a running session is stopped early (set-time button, leaving the scene)
     void OnPomodoroInterrupted()
     {
-        if (UserProgressManager.Instance != null && sessionStartTimeUnscaled > 0) // Only log if a session actually started
-        {
-            float actualDurationMinutes = (Time.unscaledTime - sessionStartTimeUnscaled) / 60f;
-            if (actualDurationMinutes < 0) actualDurationMinutes = 0;
+        LogSession(false);
+    }
 
-            ActivityLogEntry pomodoroLog = new ActivityLogEntry(
-                "PomodoroInterrupted", // Different activity type for interrupted sessions
-                actualDurationMinutes,   // Actual duration
-                0,
-                $"Pomodoro session interrupted after {actualDurationMinutes:F1} minutes (Target: {initialPomodoroMinutes})."
-            );
+    // Single place this script reports to the activity log.
+    void LogSession(bool completed)
+    {
+        if (sessionStartTimeUnscaled <= 0) return; // no session was started
 
-            UserProgressManager.Instance.currentUserProgress.AddLog(pomodoroLog);
-            UserProgressManager.Instance.SaveProgress();
+        float actualMinutes = Mathf.Max(0f, (Time.unscaledTime - sessionStartTimeUnscaled) / 60f);
+        UserProgressManager progress = UserProgressManager.Instance;
+        if (progress != null)
+            progress.RecordActivity(ActivityType.Pomodoro, actualMinutes, completed, initialPomodoroMinutes);
 
-            Debug.Log($"Logged Pomodoro INTERRUPTED: {actualDurationMinutes:F1} minutes.");
-        }
-        sessionStartTimeUnscaled = 0; // Reset start time
-        initialPomodoroMinutes = 0; // Reset initial duration
+        sessionStartTimeUnscaled = 0;
+        initialPomodoroMinutes = 0;
     }
 
     IEnumerator TransitionToResting()

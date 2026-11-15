@@ -1,122 +1,66 @@
 using System.Collections.Generic;
-using System.IO;
+using DearPompom;
+using DearPompom.Core;
 using UnityEngine;
-using System; // Added for DateTime in ActivityLogEntry
 
+/// <summary>
+/// Stores journal entries (save/journal.json through SaveStore) and reports journal activity
+/// to the activity log. The journal TEXT stays in the journal file only; the activity log gets
+/// the mood and the time, never the words.
+/// </summary>
 public class JournalDataManager : MonoBehaviour
 {
     private List<JournalEntry> entries = new List<JournalEntry>();
-    private string savePath;
 
-    // Keep track of when the journal UI was opened
-    private float journalSessionStartTimeUnscaled = -1f; // Initialize to -1 to indicate not started
+    // Time.unscaledTime when the journal UI was opened; -1 while closed.
+    private float journalSessionStartTimeUnscaled = -1f;
 
     void Awake()
     {
-        savePath = Path.Combine(Application.persistentDataPath, "journalData.json");
+        Services.EnsureBooted();
         LoadEntries();
     }
 
-    // --- NEW: Log session duration when the application quits or is paused ---
     void OnApplicationFocus(bool hasFocus)
     {
-        if (!hasFocus)
-        {
-            // Application is losing focus, which is a good time to end the session
-            EndJournalSession();
-        }
+        if (!hasFocus) EndJournalSession();
     }
 
     void OnApplicationQuit()
     {
-        // Also end the session when the application is closed
         EndJournalSession();
     }
 
-    // Called when the journal UI is opened
+    /// <summary>Called when the journal UI is opened.</summary>
     public void StartJournalSession()
     {
-        if (journalSessionStartTimeUnscaled == -1f) // Only start if not already started
-        {
-            journalSessionStartTimeUnscaled = Time.unscaledTime;
-            Debug.Log("Journal session started.");
-        }
-        else
-        {
-            Debug.LogWarning("Journal session already started. Ignoring redundant StartJournalSession call.");
-        }
+        if (journalSessionStartTimeUnscaled < 0f) journalSessionStartTimeUnscaled = Time.unscaledTime;
     }
 
-    // Call this when the journal UI is closed (e.g., "Close" button clicked)
+    /// <summary>Called when the journal UI is closed. Logs the time spent with it open.</summary>
     public void EndJournalSession()
     {
-        if (journalSessionStartTimeUnscaled != -1f) // Only log if a session was actually started
-        {
-            float durationMinutes = (Time.unscaledTime - journalSessionStartTimeUnscaled) / 60f;
-            if (durationMinutes < 0) durationMinutes = 0; // Should not happen with unscaledTime, but good safeguard
+        if (journalSessionStartTimeUnscaled < 0f) return;
 
-            if (UserProgressManager.Instance != null)
-            {
-                ActivityLogEntry journalSessionLog = new ActivityLogEntry(
-                    "JournalSession",    // activityType
-                    durationMinutes,     // durationMinutes
-                    0,                   // score (not applicable)
-                    "Time spent in journal UI" // notes
-                );
-
-                UserProgressManager.Instance.currentUserProgress.AddLog(journalSessionLog);
-                UserProgressManager.Instance.SaveProgress();
-                Debug.Log($"Logged Journal Session: {durationMinutes:F1} minutes.");
-            }
-            else
-            {
-                Debug.LogError("UserProgressManager.Instance is null. Cannot log journal session.");
-            }
-            journalSessionStartTimeUnscaled = -1f; // Reset for next session
-        }
-        else
-        {
-            Debug.LogWarning("EndJournalSession called, but no session was active or started. Ignoring.");
-        }
+        float minutes = Mathf.Max(0f, (Time.unscaledTime - journalSessionStartTimeUnscaled) / 60f);
+        journalSessionStartTimeUnscaled = -1f;
+        Record(minutes, Mood.None, ActivityKind.JournalSession);
     }
 
+    /// <param name="mood">Index of the mood button (see DearPompom.Core.Mood).</param>
     public void SaveEntry(string text, int mood)
     {
-        if (string.IsNullOrEmpty(text.Trim())) return; // Don't save empty entries
+        if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(text.Trim())) return;
 
-        JournalEntry newEntry = new JournalEntry
+        entries.Add(new JournalEntry
         {
             date = System.DateTime.Now.ToString("MMM dd, yyyy HH:mm"),
             text = text,
             mood = mood,
             id = System.Guid.NewGuid().ToString()
-        };
-
-        entries.Add(newEntry);
+        });
         SaveToFile();
-        Debug.Log($"Saved entry: {newEntry.date}");
-
-        // --- NEW LOGGING CODE for individual entry ---
-        if (UserProgressManager.Instance != null)
-        {
-            ActivityLogEntry journalEntryLog = new ActivityLogEntry(
-                "JournalEntry",      // activityType
-                0,                   // durationMinutes (not applicable for a single entry save)
-                0,                   // score (not applicable)
-                text                 // notes (the actual journal entry text)
-            );
-            journalEntryLog.mood = mood; // so recommendations can read the mood
-
-            UserProgressManager.Instance.currentUserProgress.AddLog(journalEntryLog);
-            UserProgressManager.Instance.SaveProgress(); // Save immediately after an entry is added
-
-            Debug.Log($"Logged Journal Entry: '{text.Substring(0, Mathf.Min(text.Length, 30))}...'");
-        }
-        else
-        {
-            Debug.LogError("UserProgressManager.Instance is null. Cannot log individual journal entry.");
-        }
-        // --- END NEW LOGGING CODE ---
+        Record(0f, Moods.FromIndex(mood), ActivityKind.JournalEntry);
     }
 
     public void DeleteEntry(string id)
@@ -127,90 +71,67 @@ public class JournalDataManager : MonoBehaviour
 
     public void UpdateEntry(string id, string newText, int newMood)
     {
-        var entry = entries.Find(e => e.id == id);
-        if (entry != null)
-        {
-            entry.text = newText;
-            entry.mood = newMood;
-            SaveToFile();
+        JournalEntry entry = entries.Find(e => e.id == id);
+        if (entry == null) return;
 
-            // --- NEW LOGGING CODE for updating an entry ---
-            if (UserProgressManager.Instance != null)
-            {
-                ActivityLogEntry journalUpdateLog = new ActivityLogEntry(
-                    "JournalUpdate",     // activityType
-                    0,                   // durationMinutes (not applicable for a single update)
-                    0,                   // score (not applicable)
-                    newText              // notes (the updated journal entry text)
-                );
-                journalUpdateLog.mood = newMood; // so recommendations can read the mood
-
-                UserProgressManager.Instance.currentUserProgress.AddLog(journalUpdateLog);
-                UserProgressManager.Instance.SaveProgress();
-
-                Debug.Log($"Logged Journal Update: '{newText.Substring(0, Mathf.Min(newText.Length, 30))}...'");
-            }
-            else
-            {
-                Debug.LogError("UserProgressManager.Instance is null. Cannot log journal update.");
-            }
-            // --- END NEW LOGGING CODE ---
-        }
-    }
-
-    private void SaveToFile()
-    {
-        try
-        {
-            Wrapper wrapper = new Wrapper { Entries = entries };
-            string json = JsonUtility.ToJson(wrapper, true);
-            File.WriteAllText(savePath, json);
-            Debug.Log($"Saved {entries.Count} entries to: {savePath}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Failed to save journal: {e.Message}");
-        }
-    }
-
-    private void LoadEntries()
-    {
-        try
-        {
-            if (File.Exists(savePath))
-            {
-                string json = File.ReadAllText(savePath);
-                var wrapper = JsonUtility.FromJson<Wrapper>(json);
-                entries = wrapper?.Entries ?? new List<JournalEntry>();
-                Debug.Log($"Loaded {entries.Count} entries");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Failed to load journal: {e.Message}");
-            entries = new List<JournalEntry>();
-        }
+        entry.text = newText;
+        entry.mood = newMood;
+        SaveToFile();
+        Record(0f, Moods.FromIndex(newMood), ActivityKind.JournalUpdate);
     }
 
     public List<JournalEntry> GetAllEntries() => new List<JournalEntry>(entries);
 
+    private static void Record(float minutes, Mood mood, ActivityKind kind)
+    {
+        UserProgressManager progress = UserProgressManager.Instance;
+        if (progress != null) progress.RecordActivity(ActivityType.Journal, minutes, mood: mood, kind: kind);
+    }
+
+    private void SaveToFile()
+    {
+        Services.Store.WriteText(SaveStore.JournalFile, JsonUtility.ToJson(new Wrapper { Entries = entries }, true));
+    }
+
+    private void LoadEntries()
+    {
+        entries = Parse(Services.Store.ReadText(SaveStore.JournalFile));
+        if (entries != null) return;
+
+        // First run of 2.0: bring the 1.0 journal into the save folder. The old file is left in place.
+        string legacyPath = Services.Store.FindLegacyFile(SaveStore.LegacyJournalFile);
+        if (legacyPath != null)
+        {
+            try { entries = Parse(System.IO.File.ReadAllText(legacyPath)); }
+            catch (System.Exception e) { Debug.LogWarning("[DearPompom] could not read 1.0 journal: " + e.Message); }
+            if (entries != null)
+            {
+                SaveToFile();
+                Debug.Log("[DearPompom] imported " + entries.Count + " journal entries from 1.0");
+                return;
+            }
+        }
+        entries = new List<JournalEntry>();
+    }
+
+    /// <summary>Null when the text is missing or not a journal file.</summary>
+    private static List<JournalEntry> Parse(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try
+        {
+            Wrapper wrapper = JsonUtility.FromJson<Wrapper>(json);
+            return wrapper != null ? wrapper.Entries : null;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[DearPompom] journal file could not be parsed: " + e.Message);
+            return null;
+        }
+    }
+
     [System.Serializable]
     private class Wrapper { public List<JournalEntry> Entries; }
-}
-
-// Mood values are the index of the mood button in the Home scene
-// (JournalUIManager.moodButtons). They are categories, not a low-to-high scale.
-// Keep this in sync if the buttons are reordered.
-public static class JournalMood
-{
-    public const int None = -1;       // not a journal log, or logged before mood was recorded
-    public const int Productive = 0;
-    public const int Tired = 1;
-    public const int Happy = 2;
-    public const int Sad = 3;
-    public const int Surprised = 4;
-
-    public static bool IsLow(int mood) => mood == Tired || mood == Sad;
 }
 
 [System.Serializable]

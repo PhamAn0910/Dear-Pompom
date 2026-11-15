@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using System;
 using System.Collections;
 using TMPro;
+using DearPompom.Core;
 
 public class MeditationTimer : MonoBehaviour
 {
@@ -135,57 +136,31 @@ public class MeditationTimer : MonoBehaviour
 
     void OnMeditationComplete()
     {
-        // --- NEW LOGGING CODE ---
-        if (UserProgressManager.Instance != null)
-        {
-            float actualDurationMinutes = (Time.unscaledTime - sessionStartTimeUnscaled) / 60f; // --- REFINED: Use unscaled time ---
-            if (actualDurationMinutes < 0) actualDurationMinutes = 0;
-
-            ActivityLogEntry meditationLog = new ActivityLogEntry(
-                "Meditation",          // activityType
-                actualDurationMinutes, // durationMinutes (actual time spent)
-                0,                   // score (not applicable)
-                $"Meditation session of {initialMeditationMinutes} minutes completed." // notes
-            );
-
-            UserProgressManager.Instance.currentUserProgress.AddLog(meditationLog);
-            UserProgressManager.Instance.SaveProgress();
-
-            Debug.Log($"Logged Meditation COMPLETED: {actualDurationMinutes:F1} minutes.");
-        }
-        else
-        {
-            Debug.LogError("UserProgressManager.Instance is null. Cannot log Meditation activity.");
-        }
-        // --- END NEW LOGGING CODE ---
+        LogSession(true);
 
         // When timer completes, transition back to Awake state
         SwitchToState(0); // Awake
         ShowTimeSetup(); // This will reset the UI as well
     }
 
-    // New method to handle meditation interrupted (e.g., user clicks set time button)
+    // Called when a running session is stopped early (set-time button, leaving the scene)
     void OnMeditationInterrupted()
     {
-        if (UserProgressManager.Instance != null && sessionStartTimeUnscaled > 0) // Only log if a session actually started
-        {
-            float actualDurationMinutes = (Time.unscaledTime - sessionStartTimeUnscaled) / 60f; // --- REFINED: Use unscaled time ---
-            if (actualDurationMinutes < 0) actualDurationMinutes = 0;
+        LogSession(false);
+    }
 
-            ActivityLogEntry meditationLog = new ActivityLogEntry(
-                "MeditationInterrupted", // Different activity type for interrupted sessions
-                actualDurationMinutes,   // Actual duration
-                0,
-                $"Meditation session interrupted after {actualDurationMinutes:F1} minutes."
-            );
+    // Single place this script reports to the activity log.
+    void LogSession(bool completed)
+    {
+        if (sessionStartTimeUnscaled <= 0) return; // no session was started
 
-            UserProgressManager.Instance.currentUserProgress.AddLog(meditationLog);
-            UserProgressManager.Instance.SaveProgress();
+        float actualMinutes = Mathf.Max(0f, (Time.unscaledTime - sessionStartTimeUnscaled) / 60f);
+        UserProgressManager progress = UserProgressManager.Instance;
+        if (progress != null)
+            progress.RecordActivity(ActivityType.Meditation, actualMinutes, completed, initialMeditationMinutes);
 
-            Debug.Log($"Logged Interrupted Meditation: {actualDurationMinutes:F1} minutes.");
-        }
-        sessionStartTimeUnscaled = 0; // Reset start time
-        initialMeditationMinutes = 0; // Reset initial duration
+        sessionStartTimeUnscaled = 0;
+        initialMeditationMinutes = 0;
     }
 
     void UpdateTimerDisplay()

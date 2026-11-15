@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Runs the same NUnit test files Unity's Test Runner uses (Assets/Tests/EditMode),
+       plus LocalOnly/ tests that need files from this machine. Run: dotnet test Tools/CoreTests -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/Tests/EditMode/**/*.cs" />
+    <Compile Include="LocalOnly/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/DearPompom.Core.csproj" />
+    <!-- NUnit 3.x on purpose: Unity ships NUnit 3.5, and NUnit 4 removed the classic Assert API. -->
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+  </ItemGroup>
+</Project>

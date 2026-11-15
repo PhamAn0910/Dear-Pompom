@@ -34,3 +34,6 @@ ignore.conf
 # Local .NET test harness output (Tools/CoreTests)
 /Tools/**/bin/
 /Tools/**/obj/
+
+# The .NET harness projects are hand-written, unlike the Unity-generated *.csproj above
+!/Tools/**/*.csproj

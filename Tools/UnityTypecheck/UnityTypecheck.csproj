@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- NOT a real build. Type-checks the Unity-facing scripts against hand-written stubs of the
+       few Unity APIs they use (UnityStubs.cs), to catch typos and wrong calls into DearPompom.Core
+       before waiting for a CI build. A clean result here does not prove Unity will compile it:
+       the stubs can be wrong. Add a script to the list below when you start editing it.
+       Run: dotnet build Tools/UnityTypecheck -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0649;CS0414;CS0169;CS0067</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="UnityStubs.cs" />
+    <Compile Include="../../Assets/Scripts/Services/**/*.cs" />
+    <Compile Include="../../Assets/Scripts/Data/Managers/UserProgressManager.cs" />
+    <Compile Include="../../Assets/Scripts/Data/ActivityLogEntry.cs" />
+    <Compile Include="../../Assets/Scripts/Data/UserProgressData.cs" />
+    <Compile Include="../../Assets/Scripts/Data/SceneVisitLogger.cs" />
+    <Compile Include="../../Assets/Scripts/Data/RecommendationSystem.cs" />
+    <Compile Include="../../Assets/Scripts/Home/JournalDataManager.cs" />
+    <Compile Include="../../Assets/Scripts/Home/PomodoroDayNight.cs" />
+    <Compile Include="../../Assets/Scripts/Forest/MeditationTimer.cs" />
+    <Compile Include="../../Assets/Scripts/Theatre/PersistentAudio.cs" />
+    <Compile Include="../../Assets/Scripts/Theatre/PauseThemeMusic.cs" />
+    <Compile Include="../../Assets/Scripts/Theatre/InstrumentStatic.cs" />
+    <Compile Include="../../Assets/Scripts/SoundEffects.cs" />
+    <Compile Include="../../Assets/Scripts/PrefabSound.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/DearPompom.Core.csproj" />
+  </ItemGroup>
+</Project>

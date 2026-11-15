@@ -1,106 +1,26 @@
+using DearPompom;
 using UnityEngine;
 
+/// <summary>
+/// Placed in the Theatre scene: fades the village music out while the theatre plays its own
+/// song and brings it back on the way out (PRD M4). 1.0 muted every persistent AudioSource it
+/// could find; now it asks AudioManager, which only touches background music.
+/// </summary>
 public class TheatreSceneAudioController : MonoBehaviour
 {
+    // Kept so the values serialized in the Theatre scene still load. Ducking replaces all four modes.
     public enum AudioHandlingMethod { Mute, Pause, Stop, Destroy }
-
-    [Tooltip("Choose how to handle the persistent audio sources")]
     public AudioHandlingMethod audioHandlingMethod = AudioHandlingMethod.Mute;
-
-    [Tooltip("If true, will restore audio when leaving this scene")]
     public bool restoreAudioOnExit = true;
-
-    private AudioSource[] persistentAudioSources;
-    private bool[] wasPlaying;
-    private float[] originalVolumes;
 
     void Awake()
     {
-        // Find all game objects with AudioSource components
-        AudioSource[] allAudioSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
-
-        // Filter for persistent audio sources (those marked DontDestroyOnLoad)
-        persistentAudioSources = System.Array.FindAll(allAudioSources, source => 
-            source.gameObject.scene.name == "DontDestroyOnLoad");
-
-        // Store their original states if we need to restore later
-        if (restoreAudioOnExit)
-        {
-            wasPlaying = new bool[persistentAudioSources.Length];
-            originalVolumes = new float[persistentAudioSources.Length];
-            
-            for (int i = 0; i < persistentAudioSources.Length; i++)
-            {
-                wasPlaying[i] = persistentAudioSources[i].isPlaying;
-                originalVolumes[i] = persistentAudioSources[i].volume;
-            }
-        }
-
-        // Handle the audio sources based on the selected method
-        HandlePersistentAudio();
+        Services.EnsureBooted();
+        Services.Audio.DuckBackground(true);
     }
 
     void OnDestroy()
     {
-        if (restoreAudioOnExit)
-        {
-            RestorePersistentAudio();
-        }
-    }
-
-    private void HandlePersistentAudio()
-    {
-        foreach (AudioSource source in persistentAudioSources)
-        {
-            if (source == null) continue;
-
-            switch (audioHandlingMethod)
-            {
-                case AudioHandlingMethod.Mute:
-                    source.mute = true;
-                    break;
-                case AudioHandlingMethod.Pause:
-                    if (source.isPlaying) source.Pause();
-                    break;
-                case AudioHandlingMethod.Stop:
-                    source.Stop();
-                    break;
-                case AudioHandlingMethod.Destroy:
-                    Destroy(source.gameObject);
-                    break;
-            }
-        }
-
-        Debug.Log($"Handled {persistentAudioSources.Length} persistent audio source(s) using method: {audioHandlingMethod}");
-    }
-
-    private void RestorePersistentAudio()
-    {
-        for (int i = 0; i < persistentAudioSources.Length; i++)
-        {
-            if (persistentAudioSources[i] == null) continue;
-
-            switch (audioHandlingMethod)
-            {
-                case AudioHandlingMethod.Mute:
-                    persistentAudioSources[i].mute = false;
-                    break;
-                case AudioHandlingMethod.Pause:
-                    if (wasPlaying[i]) persistentAudioSources[i].UnPause();
-                    break;
-                case AudioHandlingMethod.Stop:
-                    if (wasPlaying[i]) persistentAudioSources[i].Play();
-                    break;
-                case AudioHandlingMethod.Destroy:
-                    // No restoration possible for destroyed objects
-                    break;
-            }
-
-            // Restore original volume
-            if (audioHandlingMethod != AudioHandlingMethod.Destroy)
-            {
-                persistentAudioSources[i].volume = originalVolumes[i];
-            }
-        }
+        if (restoreAudioOnExit && Services.Audio != null) Services.Audio.DuckBackground(false);
     }
 }

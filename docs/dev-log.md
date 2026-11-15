@@ -20,38 +20,38 @@ Mức kiểm chứng dùng trong bảng:
 
 ### Bước 1. Vá tạm B1, B2 trên code 1.0
 
-- Commit `90704c88`. Đây là thay đổi đang dở trong thư mục làm việc từ trước, commit riêng để lịch sử rõ.
+- Commit `82d9563c`. Đây là thay đổi đang dở trong thư mục làm việc từ trước, commit riêng để lịch sử rõ.
 - Kiểm chứng: **Chưa** (được thay bằng engine mới ở bước 3).
 
 ### Bước 2. Tên sản phẩm, gitignore, file rỗng (B9)
 
-- Commit `7c32f317`.
+- Commit `2f7ac4d0`.
 - `productName`, `companyName` thành "Dear Pompom". Xoá `Assets/Scripts/SceneVisitLogger.cs` (0 byte, trùng tên với bản trong `Data/`; GUID của nó không scene nào dùng).
 - Lưu ý: đổi tên sản phẩm làm đổi thư mục save trên desktop. `SaveStore` ở bước 4 tìm cả thư mục cũ.
 
 ### Bước 3. Lõi `DearPompom.Core`
 
-- Commit `00c0664d`. Tài liệu: [modules/core.md](modules/core.md), [modules/recommendations.md](modules/recommendations.md).
+- Commit `e065277b`. Tài liệu: [modules/core.md](modules/core.md), [modules/recommendations.md](modules/recommendations.md).
 - Yêu cầu PRD: D1, D2, D3, D4, D6, R2, R4, R5, R6; nền cho C5 (điều kiện chương).
 - Kiểm chứng: **Test**, 82 test. Trong đó `RealV1Save_MigratesWithoutLoss` migrate file save 1.0 thật trên máy này: 97/97 dòng, giữ nguyên tổng số phút.
 - Đã thử làm hỏng một luật (`BreakAfterPomodorosRule` ngưỡng +1): test bắt được, rồi khôi phục.
 
 ### Bước 4. Nối lõi vào Unity
 
-- Commit `5e6cf7e0`. Tài liệu: [modules/services.md](modules/services.md).
+- Commit `c831962e`. Tài liệu: [modules/services.md](modules/services.md).
 - Yêu cầu PRD: 8.2 (Bootstrap, sự kiện), D4, D5.
 - Kiểm chứng: **Kiểu**. Riêng `MathGameManager.cs` và `GameSceneController2.cs` (mỗi file sửa một lời gọi) không nằm trong danh sách kiểm tra kiểu: **Chưa**.
 - Commit này tham chiếu `AudioManager`, file đó nằm ở commit kế. Hai commit phải đi cùng nhau mới biên dịch.
 
 ### Bước 5. AudioManager
 
-- Commit `d866bb52`. Tài liệu: [modules/audio.md](modules/audio.md).
+- Commit `86d2871c`. Tài liệu: [modules/audio.md](modules/audio.md).
 - Yêu cầu PRD: M3, M2 (dữ liệu và API), một phần B5.
 - Kiểm chứng: **Kiểu**.
 
 ### Bước 6. Công cụ và CI
 
-- Commit `c00a6557` (`Tools/UnityTypecheck`), `61df2842` (workflow, tài liệu).
+- Commit `56bc4f66` (`Tools/UnityTypecheck`), `fb6f7686` (workflow, tài liệu).
 - Workflow: thêm job "Core tests (no Unity)" chạy trước; nhánh `v2/**` build nhưng không deploy; chỉ `main` deploy lên Pages.
 
 ### Trạng thái cổng Giai đoạn 0 (PRD 9.1)

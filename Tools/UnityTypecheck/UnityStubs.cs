@@ -80,12 +80,26 @@ namespace UnityEngine
     public static class Mathf
     {
         public static float Clamp01(float v) { return v; }
+        public static float Ceil(float f) { return f; }
         public static float Lerp(float a, float b, float t) { return a; }
         public static float Max(float a, float b) { return a; }
         public static int Min(int a, int b) { return a; }
         public static int FloorToInt(float f) { return 0; }
     }
     public class WaitForSeconds { public WaitForSeconds(float seconds) { } }
+
+    public static class Random
+    {
+        public static int Range(int minInclusive, int maxExclusive) { return minInclusive; }
+    }
+
+    public struct Color
+    {
+        public float r, g, b, a;
+        public static Color white { get { return default(Color); } }
+        public static Color green { get { return default(Color); } }
+        public static Color red { get { return default(Color); } }
+    }
     public enum RuntimeInitializeLoadType { AfterSceneLoad, BeforeSceneLoad, AfterAssembliesLoaded, BeforeSplashScreen, SubsystemRegistration }
     [AttributeUsage(AttributeTargets.Method)]
     public class RuntimeInitializeOnLoadMethodAttribute : Attribute { public RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType type) { } }
@@ -125,7 +139,7 @@ namespace UnityEngine.Events
 namespace UnityEngine.UI
 {
     public class Button : MonoBehaviour { public Events.UnityEvent onClick = new Events.UnityEvent(); public bool interactable; }
-    public class Image : MonoBehaviour { }
+    public class Image : MonoBehaviour { public Color color; }
 }
 
 namespace TMPro

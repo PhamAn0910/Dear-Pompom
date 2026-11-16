@@ -25,6 +25,7 @@
     <Compile Include="../../Assets/Scripts/Theatre/PersistentAudio.cs" />
     <Compile Include="../../Assets/Scripts/Theatre/PauseThemeMusic.cs" />
     <Compile Include="../../Assets/Scripts/Theatre/InstrumentStatic.cs" />
+    <Compile Include="../../Assets/Scripts/School/MathGameManager.cs" />
     <Compile Include="../../Assets/Scripts/SoundEffects.cs" />
     <Compile Include="../../Assets/Scripts/PrefabSound.cs" />
   </ItemGroup>

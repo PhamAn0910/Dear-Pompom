@@ -46,6 +46,7 @@ public class MathGameManager : MonoBehaviour
 
     void Start()
     {
+        EnsureOptionImages();
         StartNewGame();
     }
 
@@ -144,14 +145,14 @@ public class MathGameManager : MonoBehaviour
             score += pointsEarned;
 
             // Visual feedback for correct answer
-            StartCoroutine(FlashOption(optionIndex, Color.green));
+            StartFlash(optionIndex, Color.green);
         }
         else
         {
             // Wrong answer
             streak = 0;
-            StartCoroutine(FlashOption(optionIndex, Color.red));
-            StartCoroutine(FlashOption(FindCorrectOption(), Color.green));
+            StartFlash(optionIndex, Color.red);
+            StartFlash(FindCorrectOption(), Color.green);
         }
 
         UpdateScoreUI();
@@ -170,13 +171,42 @@ public class MathGameManager : MonoBehaviour
         return 0;
     }
 
+    // Each button keeps its resting colour and at most one running flash. The 1.0 code
+    // read the "original" colour at flash start, so a second flash that began during the
+    // first one saved green as the original and the button stayed green (bug-log W1).
+    private Image[] optionImages;
+    private Color[] optionRestColors;
+    private Coroutine[] optionFlashes;
+
+    private void EnsureOptionImages()
+    {
+        if (optionImages != null) return;
+
+        optionImages = new Image[optionTexts.Length];
+        optionRestColors = new Color[optionTexts.Length];
+        optionFlashes = new Coroutine[optionTexts.Length];
+        for (int i = 0; i < optionTexts.Length; i++)
+        {
+            optionImages[i] = optionTexts[i].GetComponentInParent<Image>();
+            optionRestColors[i] = optionImages[i] != null ? optionImages[i].color : Color.white;
+        }
+    }
+
+    private void StartFlash(int index, Color color)
+    {
+        EnsureOptionImages();
+        if (optionImages[index] == null) return;
+
+        if (optionFlashes[index] != null) StopCoroutine(optionFlashes[index]);
+        optionFlashes[index] = StartCoroutine(FlashOption(index, color));
+    }
+
     IEnumerator FlashOption(int index, Color color)
     {
-        Image buttonImage = optionTexts[index].GetComponentInParent<Image>();
-        Color originalColor = buttonImage.color;
-        buttonImage.color = color;
+        optionImages[index].color = color;
         yield return new WaitForSeconds(0.5f);
-        buttonImage.color = originalColor;
+        optionImages[index].color = optionRestColors[index];
+        optionFlashes[index] = null;
     }
 
     void UpdateScoreUI()

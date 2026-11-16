@@ -5,6 +5,11 @@ trong `modules/`. Khi gặp lỗi trên bản web, bắt đầu từ [web-test.m
 
 | Trang | Dùng khi |
 | --- | --- |
+| [plan/README.md](plan/README.md) | **Bắt đầu ở đây.** Việc tiếp theo là gì, trạng thái từng bước |
+| [guides/no-editor-unity.md](guides/no-editor-unity.md) | Luật làm Unity khi không có editor: director, Resources, stub, bẫy WebGL |
+| [guides/game-feel.md](guides/game-feel.md) | Chuyển động và thao tác: bảng số chuẩn, Tween, ButtonFeel, chuyển cảnh, bản đồ, hiệu năng |
+| [guides/animation-assets.md](guides/animation-assets.md) | Hình và animation: clip ô vá, chuyển động trang trí, hạt, cách có hình mới |
+| [scenes/](scenes/) | Cây object của từng scene và prefab (sinh bằng `Tools/scene_inventory.py`) |
 | [dev-log.md](dev-log.md) | Muốn biết bước nào đã làm gì, ở commit nào, đã kiểm chứng tới đâu |
 | [web-test.md](web-test.md) | Test bản web: cần kiểm gì, lỗi nào dễ xảy ra, đọc log ở đâu |
 | [bug-log.md](bug-log.md) | Ghi lỗi tìm thấy và cách sửa |
@@ -20,7 +25,7 @@ Máy phát triển hiện không cài Unity. Ba lớp kiểm tra thay thế, t�
 
 | Lệnh | Kiểm được gì | Không kiểm được gì | Thời gian |
 | --- | --- | --- | --- |
-| `dotnet test Tools/CoreTests` | Toàn bộ logic trong `Assets/Scripts/Core` (82 test) | Mọi thứ dùng API Unity | vài giây |
+| `dotnet test Tools/CoreTests` | Toàn bộ logic trong `Assets/Scripts/Core` (104 test) | Mọi thứ dùng API Unity | vài giây |
 | `dotnet build Tools/UnityTypecheck` | Lỗi cú pháp, gõ sai tên, gọi sai vào lõi trong các script Unity đã liệt kê | API Unity thật (stub tự viết có thể sai), scene, prefab | vài giây |
 | Push nhánh `v2/**` lên GitHub | Unity thật biên dịch và build WebGL | Hành vi khi chạy | khoảng 30 phút |
 | Push `main` | Như trên, rồi đưa lên GitHub Pages để chơi thử | | khoảng 30 phút |
@@ -38,6 +43,8 @@ Assets/Plugins/WebGL/       JavaScript cho bản web (đồng bộ file save)
 Tools/Core, Tools/CoreTests Project dotnet để build và test lõi ngoài Unity
 Tools/UnityTypecheck        Kiểm tra kiểu script Unity bằng stub
 Tools/gen_meta.py           Sinh file .meta
+Tools/scene_inventory.py    Sinh docs/scenes/ từ YAML của scene và prefab
+Tools/art/                  extract_patches.py (chuỗi ảnh -> clip ô vá), make_fx_sprites.py (sprite hạt)
 docs/                       Tài liệu này
 ```
 
